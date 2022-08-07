@@ -1,0 +1,2 @@
+# EnvironmentalSensorComfort
+A simplified version of my [PortableWeatherStation](https://github.com/dciliberti/PortableWeatherStation), without forecasts. Made with Arduino Nano. Collects temperature, humidity, and pressure data. A DHT22 sensor acquires data about ambient relative humidity and temperature. A BMP180 sensor acquires pressure data. Temperature, relative humidity, humidex comfort index, atmospheric pressure, and barometric altitude are displayed on a 0.96" OLED screen.
