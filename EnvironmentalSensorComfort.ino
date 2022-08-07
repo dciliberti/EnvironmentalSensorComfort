@@ -54,12 +54,9 @@ double temperature, pressure, height, humidity, humidex;
 
 
 // Define functions to draw weather graphics
-void drawWeatherSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol)
+void drawSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol)
 {
   // fonts used:
-  // u8g2_font_open_iconic_embedded_6x_t
-  // u8g2_font_open_iconic_weather_6x_t
-  // u8g2_font_open_iconic_thing_6x_t
   // encoding values, see: https://github.com/olikraus/u8g2/wiki/fntgrpiconic
   
   switch(symbol)
@@ -77,25 +74,6 @@ void drawWeatherSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol)
       u8g2.drawGlyph(x, y, 66);
       break;
   }
-}
-
-
-void drawWeather(uint8_t symbol, int degree)
-{
-  drawWeatherSymbol(0, 48, symbol);
-  u8g2.setFont(u8g2_font_logisoso32_tf);
-  u8g2.setCursor(48+3, 42);
-  u8g2.print(degree);
-  u8g2.print("°C");   // requires enableUTF8Print()
-}
-
-void drawHumidity(uint8_t symbol, int percentage)
-{
-  drawWeatherSymbol(0, 48, symbol);
-  u8g2.setFont(u8g2_font_logisoso32_tf);
-  u8g2.setCursor(48+3, 42);
-  u8g2.print(percentage);
-  u8g2.print("%");   // requires enableUTF8Print()
 }
 
 
@@ -142,7 +120,7 @@ void drawScrollString(int16_t offset, const char *s)
 }
 
 
-void draw(const char *s, uint8_t symbol, int degree)
+void draw(const char *s, uint8_t symbol, int value)
 {
   int16_t offset = -(int16_t)u8g2.getDisplayWidth();
   int16_t len = strlen(s);
@@ -150,7 +128,20 @@ void draw(const char *s, uint8_t symbol, int degree)
   {
     u8g2.firstPage();
     do {
-      drawWeather(symbol, degree);
+      drawSymbol(0, 48, symbol);
+      u8g2.setFont(u8g2_font_logisoso32_tf);
+      u8g2.setCursor(48+3, 42);
+      u8g2.print(value);
+      // Print percentage char if humidity is shown
+      // otherwise print Celsius degree chars
+      if (symbol == 1)
+      {
+        u8g2.print("%");   // requires enableUTF8Print()
+      }
+      else
+      {
+        u8g2.print("°C");   // requires enableUTF8Print()
+      }
       drawScrollString(offset, s);
     } while ( u8g2.nextPage() );
     delay(20);
@@ -160,8 +151,7 @@ void draw(const char *s, uint8_t symbol, int degree)
   }
 }
 
-
-void drawHum(const char *s, uint8_t symbol, int percentage)
+void write(const char *s, int value, const char *unit)
 {
   int16_t offset = -(int16_t)u8g2.getDisplayWidth();
   int16_t len = strlen(s);
@@ -169,7 +159,10 @@ void drawHum(const char *s, uint8_t symbol, int percentage)
   {
     u8g2.firstPage();
     do {
-      drawHumidity(symbol, percentage);
+      u8g2.setFont(u8g2_font_logisoso32_tf);
+      u8g2.setCursor(6, 42);
+      u8g2.print(value);
+      u8g2.print(unit);
       drawScrollString(offset, s);
     } while ( u8g2.nextPage() );
     delay(20);
@@ -338,7 +331,28 @@ void loop() {
 
   // Display values on screen
   draw("Temperatura ambiente", TEMP, temperature);
-  drawHum("Umidita relativa", HUMIDITY, humidity);
-  draw("Temperatura percepita", HUMIDEX, humidex);
+  draw("Umidita relativa", HUMIDITY, humidity);
+
+  if (humidex < 20){
+    draw("Temperatura percepita", HUMIDEX, humidex);
+  }
+  else if (humidex >= 20 && humidex < 27){
+    draw("Temperatura percepita: comfort", HUMIDEX, humidex);
+  }
+  else if (humidex >= 27 && humidex < 30){
+    draw("Temperatura percepita: attenzione", HUMIDEX, humidex);
+  }
+  else if (humidex >= 30 && humidex < 40){
+    draw("Temperatura percepita: fare molta attenzione", HUMIDEX, humidex);
+  }
+  else if (humidex >= 40 && humidex < 55){
+    draw("Temperatura percepita: pericolo!", HUMIDEX, humidex);
+  }
+  else {
+    draw("Temperatura percepita: pericolo estremo!", HUMIDEX, humidex);
+  }
+  
+  write("Pressione atmosferica (mbar)",pressure,"");
+  write("Quota barometrica",height," m");
 
 }
