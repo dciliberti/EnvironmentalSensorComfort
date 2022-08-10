@@ -37,9 +37,10 @@
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
 // Define some useful constants
-#define TEMP 0
+#define TEMPERATURE 0
 #define HUMIDITY 1
-#define HUMIDEX 2
+#define HEATINDEX 2
+#define HUMIDEX 3
 
 // Create the DHT object (which reads temperature and humidity)
 DHT dhtSensor(2, DHT22);
@@ -50,7 +51,8 @@ SFE_BMP180 bmpSensor;
 
 // Variables declaration
 char status;
-double temperature, pressure, height, humidity, humidex;
+double temperature, pressure, height, humidity;
+int heatindex, humidex;
 
 
 // Define functions to draw weather graphics
@@ -61,13 +63,17 @@ void drawSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol)
   
   switch(symbol)
   {
-    case TEMP:
+    case TEMPERATURE:
       u8g2.setFont(u8g2_font_open_iconic_human_6x_t);
       u8g2.drawGlyph(x, y, 65);  
       break;
     case HUMIDITY:
       u8g2.setFont(u8g2_font_open_iconic_thing_6x_t);
       u8g2.drawGlyph(x, y, 72);
+      break;
+    case HEATINDEX:
+      u8g2.setFont(u8g2_font_open_iconic_thing_6x_t);
+      u8g2.drawGlyph(x, y, 78);
       break;
     case HUMIDEX:
       u8g2.setFont(u8g2_font_open_iconic_human_6x_t);
@@ -302,57 +308,69 @@ void loop() {
   Serial.print(temperature,1);
   Serial.println(F("°C\t"));
 
+  heatindex = dhtSensor.computeHeatIndex(temperature, humidity, false);
+  Serial.print(F("Heat Index: "));
+  Serial.print(heatindex,1);
+  Serial.println(F("°C\t"));
+
   // Calculates humidex index and display its status
-  humidex = temperature + (0.5555 * (0.06 * humidity * pow(10,0.03*temperature) -10));
+  // Source (in Italian): http://www.centrometeo.com/articoli-reportage-approfondimenti/climatologia/5008-indici-humidex-temperatura-equivalente
+  humidex = round(temperature + (0.5555 * (0.06 * humidity * pow(10,0.03*temperature) -10)));
   Serial.print(F("Humidex: "));
   Serial.print(humidex);
-  Serial.print(F("\t"));
-
-  // Humidex category
-  if (humidex < 20){
-    Serial.println(F("No index"));
-  }
-  else if (humidex >= 20 && humidex < 27){
-    Serial.println(F("Comfort"));
-  }
-  else if (humidex >= 27 && humidex < 30){
-    Serial.println(F("Caution"));
-  }
-  else if (humidex >= 30 && humidex < 40){
-    Serial.println(F("Extreme caution"));
-  }
-  else if (humidex >= 40 && humidex < 55){
-    Serial.println(F("Danger"));
-  }
-  else {
-    Serial.println(F("Extreme danger"));
-  }
+  Serial.println(F("°C"));
 
 
   // Display values on screen
-  draw("Temperatura ambiente", TEMP, temperature);
-  draw("Umidita relativa", HUMIDITY, humidity);
+  draw("Temperatura ambiente", TEMPERATURE, round(temperature));
+  draw("Umidita relativa", HUMIDITY, round(humidity));
 
-  if (humidex < 20){
-    draw("Temperatura percepita", HUMIDEX, humidex);
+  // Heat index levels
+  // Source: https://en.wikipedia.org/wiki/Heat_index
+  if (heatindex < 27) {
+    draw("Indice di calore: benessere", HEATINDEX, heatindex);
+    Serial.println(F("Heat index: comfort"));
   }
-  else if (humidex >= 20 && humidex < 27){
-    draw("Temperatura percepita: comfort", HUMIDEX, humidex);
+  else if (heatindex >= 27 && heatindex < 32) {
+    draw("Indice di calore: cautela", HEATINDEX, heatindex);
+    Serial.println(F("Heat index: caution"));
+  }
+  else if (heatindex >= 32 && heatindex < 41) {
+    draw("Indice di calore: estrema cautela", HEATINDEX, heatindex);
+    Serial.println(F("Heat index: extreme caution"));
+  }
+  else if (heatindex >= 41 && heatindex < 54) {
+    draw("Indice di calore: PERICOLO", HEATINDEX, heatindex);
+    Serial.println(F("Heat index: DANGER"));
+  }
+  else if (heatindex > 54) {
+    draw("Indice di calore: ELEVATO PERICOLO!", HEATINDEX, heatindex);
+    Serial.println(F("Heat index: EXTREME DANGER!"));
+  }
+
+  // Humidex levels
+  if (humidex < 27){
+    draw("Humidex: benessere", HUMIDEX, humidex);
+    Serial.println(F("Humidex: Comfort"));
   }
   else if (humidex >= 27 && humidex < 30){
-    draw("Temperatura percepita: attenzione", HUMIDEX, humidex);
+    draw("Humidex: cautela", HUMIDEX, humidex);
+    Serial.println(F("Humidex: caution"));
   }
   else if (humidex >= 30 && humidex < 40){
-    draw("Temperatura percepita: fare molta attenzione", HUMIDEX, humidex);
+    draw("Humidex: estrema cautela", HUMIDEX, humidex);
+    Serial.println(F("Humidex: extreme caution"));
   }
   else if (humidex >= 40 && humidex < 55){
-    draw("Temperatura percepita: pericolo!", HUMIDEX, humidex);
+    draw("Humidex: PERICOLO", HUMIDEX, humidex);
+    Serial.println(F("Humidex: DANGER"));
   }
   else {
-    draw("Temperatura percepita: pericolo estremo!", HUMIDEX, humidex);
+    draw("Humidex: ELEVATO PERICOLO!", HUMIDEX, humidex);
+    Serial.println(F("Humidex: EXTREME DANGER!"));
   }
   
-  write("Pressione atmosferica (mbar)",pressure,"");
-  write("Quota barometrica",height," m");
+  write("Pressione atmosferica (mbar)",round(pressure),"");
+  write("Quota barometrica",round(height),"m");
 
 }
